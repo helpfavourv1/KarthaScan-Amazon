@@ -9,7 +9,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import com.amazon.device.iap.PurchasingService
-import com.amazon.device.iap.PurchasingService
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.zdmgold.katharscan/downloads"

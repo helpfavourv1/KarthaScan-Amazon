@@ -2,6 +2,7 @@ package com.zdmgold.katharscan
 
 import android.util.Log
 import com.amazon.device.iap.PurchasingListener
+import com.amazon.device.iap.model.UserDataResponse
 import com.amazon.device.iap.PurchasingService
 import com.amazon.device.iap.model.ProductDataResponse
 import com.amazon.device.iap.model.ProductType
@@ -12,6 +13,10 @@ import io.flutter.plugin.common.MethodChannel
 
 class AmazonIapHandler : PurchasingListener {
     private val TAG = "AmazonIapHandler"
+
+    override fun onUserDataResponse(response: UserDataResponse) {
+        Log.d(TAG, "onUserDataResponse: " + response.requestStatus)
+    }
     private var methodChannel: MethodChannel? = null
 
     fun setMethodChannel(channel: MethodChannel?) {
