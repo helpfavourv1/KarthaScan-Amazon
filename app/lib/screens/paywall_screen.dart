@@ -8,10 +8,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
 import '../core/providers/subscription_provider.dart';
+import '../platform/iap_service.dart';
 import '../core/utils/constants.dart';
 import '../l10n/app_localizations.dart';
 
@@ -32,7 +32,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _purchase(AppLocalizations l10n) async {
-    final ProductDetails? product = _subscriptionProvider.removeAdsProduct;
+    final AmazonProductDetails? product = _subscriptionProvider.removeAdsProduct;
     if (product == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.pricingLoadingError)),

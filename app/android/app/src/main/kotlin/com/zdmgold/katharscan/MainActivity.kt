@@ -8,9 +8,13 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import com.amazon.device.iap.PurchasingService
+import com.amazon.device.iap.PurchasingService
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.zdmgold.katharscan/downloads"
+    private val IAP_CHANNEL = "com.zdmgold.katharscan/amazon_iap"
+    private lateinit var iapHandler: AmazonIapHandler
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -31,8 +35,61 @@ class MainActivity: FlutterActivity() {
                 } catch (e: Exception) {
                     result.error("SAVE_FAILED", e.message, null)
                 }
+            } else if (call.method == "getProductData") {
+                val sku = call.argument<String>("sku")
+                if (sku != null) {
+                    PurchasingService.getProductData(setOf(sku))
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGS", "Missing sku", null)
+                }
+            } else if (call.method == "purchase") {
+                val sku = call.argument<String>("sku")
+                if (sku != null) {
+                    PurchasingService.purchase(sku)
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGS", "Missing sku", null)
+                }
+            } else if (call.method == "restorePurchases") {
+                PurchasingService.getPurchaseUpdates(true)
+                result.success(null)
             } else {
                 result.notImplemented()
+            }
+        }
+
+        // Amazon IAP MethodChannel
+        iapHandler = AmazonIapHandler()
+        val iapChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, IAP_CHANNEL)
+        iapHandler.setMethodChannel(iapChannel)
+        PurchasingService.registerListener(this, iapHandler)
+
+        iapChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getProductData" -> {
+                    val sku = call.argument<String>("sku")
+                    if (sku != null) {
+                        PurchasingService.getProductData(setOf(sku))
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGS", "Missing sku", null)
+                    }
+                }
+                "purchase" -> {
+                    val sku = call.argument<String>("sku")
+                    if (sku != null) {
+                        PurchasingService.purchase(sku)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGS", "Missing sku", null)
+                    }
+                }
+                "restorePurchases" -> {
+                    PurchasingService.getPurchaseUpdates(true)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
         }
     }

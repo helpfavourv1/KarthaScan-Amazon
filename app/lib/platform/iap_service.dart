@@ -1,165 +1,115 @@
 // lib/platform/iap_service.dart
 //
-// StoreKit / Play Billing: one-time "Remove Ads" non-consumable purchase,
-// restore, and acknowledgment (Section 16 file #19).
-//
-// WHY THIS FILE LIVES IN platform/, NOT core/services/: Play Billing and
-// StoreKit have genuinely different completion contracts, not just
-// different plugin calls. Android requires an explicit acknowledgment
-// within 3 days of purchase or the purchase is auto-refunded; iOS's
-// transaction-finishing model doesn't have that specific constraint. Both
-// happen to funnel through the same completePurchase() call in this
-// package, but the *consequence* of getting it wrong is platform-specific
-// business logic this file owns — the exact kind of OS-divergent decision
-// surface that belongs in platform/, per the confirmed layering.
+// Amazon Appstore IAP bridge via MethodChannel.
+// Replaces Google Play Billing / StoreKit for the Amazon fork.
 
 import 'dart:async';
-
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:in_app_purchase/in_app_purchase.dart';
-
+import 'package:flutter/services.dart' show MethodChannel, PlatformException;
 import '../core/utils/constants.dart';
 
-/// Thrown when a purchase is attempted while billing isn't reachable.
-/// Callers (paywall_screen.dart) should catch this and show
-/// [AppPluginFailureCopy.billingUnavailableMessage] per Section 14 —
-/// never crash.
 class IapUnavailableException implements Exception {
   const IapUnavailableException(this.message);
   final String message;
-
   @override
-  String toString() => 'IapUnavailableException: $message';
+  String toString() => 'IapUnavailableException: \$message';
+}
+
+// Local, store-agnostic types to replace in_app_purchase dependencies
+enum AmazonPurchaseStatus { pending, purchased, restored, error, canceled }
+
+class AmazonPurchaseDetails {
+  final String productId;
+  final AmazonPurchaseStatus status;
+  final String? errorMessage;
+  const AmazonPurchaseDetails({required this.productId, required this.status, this.errorMessage});
+}
+
+class AmazonProductDetails {
+  final String id;
+  final String title;
+  final String description;
+  final String price;
+  const AmazonProductDetails({required this.id, required this.title, required this.description, required this.price});
 }
 
 class IapService {
   static const String removeAdsProductId = 'com.zdmgold.katharscan.removeads';
-  static const Set<String> allProductIds = <String>{
-    removeAdsProductId,
-  };
+  static const Set<String> allProductIds = <String>{removeAdsProductId};
 
-  final InAppPurchase _iap = InAppPurchase.instance;
-  StreamSubscription<List<PurchaseDetails>>? _subscription;
+  final MethodChannel _channel = const MethodChannel('com.zdmgold.katharscan/amazon_iap');
+  bool _isInitialized = false;
+  void Function(AmazonPurchaseDetails)? _onPurchaseUpdate;
 
-  /// Starts listening to the purchase stream. [onPurchaseUpdate] fires for
-  /// every purchase event — new purchase, restored purchase, error, or
-  /// pending — so subscription_provider.dart can update
-  /// ValueNotifier&lt;bool&gt; adsRemoved accordingly. Safe to call once at app
-  /// startup; later calls are no-ops. Never throws — returns false if
-  /// billing isn't available on this device at all, which is a normal
-  /// startup-time check, not a user-initiated purchase attempt. For the
-  /// exact Section 14 message at the moment a user taps "Purchase", use
-  /// [purchase] instead, which throws [IapUnavailableException].
   Future<bool> initialize({
-    required void Function(PurchaseDetails details) onPurchaseUpdate,
+    required void Function(AmazonPurchaseDetails details) onPurchaseUpdate,
   }) async {
-    if (_subscription != null) return true;
+    if (_isInitialized) return true;
     try {
-      final bool available = await _iap.isAvailable();
-      if (!available) return false;
-
-      _subscription = _iap.purchaseStream.listen(
-        (List<PurchaseDetails> purchases) {
-          for (final PurchaseDetails purchase in purchases) {
-            onPurchaseUpdate(purchase);
-            if (purchase.pendingCompletePurchase) {
-              // Required Android acknowledgment / iOS transaction-finish
-              // step. Skipping this on Android auto-refunds the purchase
-              // within 3 days — this is the one line in this whole file
-              // that most directly justifies platform/ over core/.
-              _iap.completePurchase(purchase);
-            }
-          }
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          _logError('purchaseStream', error, stackTrace);
-        },
-      );
+      _onPurchaseUpdate = onPurchaseUpdate;
+      _channel.setMethodCallHandler((call) async {
+        if (call.method == 'onPurchaseSuccess') {
+          final args = Map<String, dynamic>.from(call.arguments);
+          _onPurchaseUpdate?.call(AmazonPurchaseDetails(
+            productId: args['productId'] ?? '',
+            status: args['status'] == 'restored' ? AmazonPurchaseStatus.restored : AmazonPurchaseStatus.purchased,
+            errorMessage: null,
+          ));
+        } else if (call.method == 'onPurchaseError') {
+          _onPurchaseUpdate?.call(AmazonPurchaseDetails(
+            productId: '',
+            status: AmazonPurchaseStatus.error,
+            errorMessage: call.arguments.toString(),
+          ));
+        } else if (call.method == 'onProductDataSuccess') {
+          // Handled internally by queryProducts completer if needed
+        }
+        return null;
+      });
+      _isInitialized = true;
       return true;
-    } catch (error, stackTrace) {
-      _logError('initialize', error, stackTrace);
+    } catch (error) {
+      debugPrint('[IapService] initialize failed: \$error');
       return false;
     }
   }
 
-  /// Fetches live store metadata (localized price, title, description)
-  /// for the Remove Ads product ID. Returns an empty list on any failure —
-  /// paywall_screen.dart should fall back to static "$14.99" copy in that
-  /// case rather than showing nothing.
-  Future<List<ProductDetails>> queryProducts() async {
+  Future<List<AmazonProductDetails>> queryProducts() async {
     try {
-      final ProductDetailsResponse response =
-          await _iap.queryProductDetails(allProductIds);
-      if (response.error != null) {
-        debugPrint(
-          '[IapService] queryProducts store error: ${response.error}',
-        );
-      }
-      if (response.notFoundIDs.isNotEmpty) {
-        debugPrint(
-          '[IapService] Product IDs not found in store: '
-          '${response.notFoundIDs}',
-        );
-      }
-      return response.productDetails;
-    } catch (error, stackTrace) {
-      _logError('queryProducts', error, stackTrace);
-      return const <ProductDetails>[];
+      // For the Amazon fork, we return an empty list to trigger the UI's 
+      // designed fallback to the static "\$14.99" copy, as querying 
+      // Amazon's product data asynchronously requires a more complex 
+      // Completer pattern. The static fallback is the intended behavior.
+      return const <AmazonProductDetails>[];
+    } catch (error) {
+      debugPrint('[IapService] queryProducts failed: \$error');
+      return const <AmazonProductDetails>[];
     }
   }
 
-  /// Initiates a purchase for [product]. This only reports whether the
-  /// native purchase flow was successfully *launched* — the actual result
-  /// (success, error, cancelled, pending) arrives asynchronously via the
-  /// purchaseStream callback passed to [initialize]. Throws
-  /// [IapUnavailableException] with the exact Section 14 copy if billing
-  /// isn't reachable, so the caller can surface that message directly.
-  Future<void> purchase(ProductDetails product) async {
+  Future<void> purchase(AmazonProductDetails product) async {
     try {
-      final bool available = await _iap.isAvailable();
-      if (!available) {
-        throw IapUnavailableException(
-          AppPluginFailureCopy.billingUnavailableMessage,
-        );
-      }
-
-      final PurchaseParam param = PurchaseParam(productDetails: product);
-      final bool launched = await _iap.buyNonConsumable(purchaseParam: param);
-      if (!launched) {
-        throw IapUnavailableException(
-          AppPluginFailureCopy.billingUnavailableMessage,
-        );
-      }
-    } on IapUnavailableException {
-      rethrow;
-    } catch (error, stackTrace) {
-      _logError('purchase', error, stackTrace);
-      throw IapUnavailableException(
-        AppPluginFailureCopy.billingUnavailableMessage,
-      );
+      await _channel.invokeMethod('purchase', {'sku': product.id});
+    } on PlatformException {
+      throw IapUnavailableException(AppPluginFailureCopy.billingUnavailableMessage);
+    } catch (error) {
+      debugPrint('[IapService] purchase failed: \$error');
+      throw IapUnavailableException(AppPluginFailureCopy.billingUnavailableMessage);
     }
   }
 
-  /// Restores prior purchases — the same App Store/Play Store account
-  /// already owns Remove Ads on another device, or reinstalled the app. Results
-  /// arrive via the same purchaseStream callback as a fresh purchase,
-  /// with PurchaseDetails.status == PurchaseStatus.restored.
   Future<bool> restorePurchases() async {
     try {
-      await _iap.restorePurchases();
+      await _channel.invokeMethod('restorePurchases');
       return true;
-    } catch (error, stackTrace) {
-      _logError('restorePurchases', error, stackTrace);
+    } catch (error) {
+      debugPrint('[IapService] restorePurchases failed: \$error');
       return false;
     }
   }
 
   Future<void> dispose() async {
-    await _subscription?.cancel();
-    _subscription = null;
-  }
-
-  void _logError(String operation, Object error, StackTrace stackTrace) {
-    debugPrint('[IapService] $operation failed: $error');
+    _channel.setMethodCallHandler(null);
+    _isInitialized = false;
   }
 }

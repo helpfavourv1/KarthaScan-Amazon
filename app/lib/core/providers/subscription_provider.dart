@@ -16,7 +16,6 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
-import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../platform/iap_service.dart';
 import '../utils/constants.dart';
@@ -35,8 +34,8 @@ class SubscriptionProvider {
 
   late final ValueNotifier<bool> adsRemoved;
 
-  final ValueNotifier<List<ProductDetails>> products =
-      ValueNotifier<List<ProductDetails>>(const <ProductDetails>[]);
+  final ValueNotifier<List<AmazonProductDetails>> products =
+      ValueNotifier<List<AmazonProductDetails>>(const <AmazonProductDetails>[]);
   final ValueNotifier<PurchaseFlowState> purchaseFlowState =
       ValueNotifier<PurchaseFlowState>(PurchaseFlowState.idle);
   final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
@@ -52,22 +51,22 @@ class SubscriptionProvider {
     products.value = await _iapService.queryProducts();
   }
 
-  void _handlePurchaseUpdate(PurchaseDetails purchase) {
+  void _handlePurchaseUpdate(AmazonPurchaseDetails purchase) {
     switch (purchase.status) {
-      case PurchaseStatus.pending:
+      case AmazonPurchaseStatus.pending:
         purchaseFlowState.value = PurchaseFlowState.inProgress;
         break;
-      case PurchaseStatus.purchased:
-      case PurchaseStatus.restored:
+      case AmazonPurchaseStatus.purchased:
+      case AmazonPurchaseStatus.restored:
         purchaseFlowState.value = PurchaseFlowState.success;
         unawaited(_setEntitled(true));
         break;
-      case PurchaseStatus.error:
+      case AmazonPurchaseStatus.error:
         purchaseFlowState.value = PurchaseFlowState.error;
-        lastError.value = purchase.error?.message ??
+        lastError.value = purchase.errorMessage ??
             AppPluginFailureCopy.billingUnavailableMessage;
         break;
-      case PurchaseStatus.canceled:
+      case AmazonPurchaseStatus.canceled:
         purchaseFlowState.value = PurchaseFlowState.cancelled;
         break;
     }
@@ -79,10 +78,10 @@ class SubscriptionProvider {
   }
 
   /// The single Remove Ads non-consumable product, if loaded from the store.
-  ProductDetails? get removeAdsProduct => _findProduct(IapService.removeAdsProductId);
+  AmazonProductDetails? get removeAdsProduct => _findProduct(IapService.removeAdsProductId);
 
-  ProductDetails? _findProduct(String id) {
-    for (final ProductDetails product in products.value) {
+  AmazonProductDetails? _findProduct(String id) {
+    for (final AmazonProductDetails product in products.value) {
       if (product.id == id) return product;
     }
     return null;
@@ -92,7 +91,7 @@ class SubscriptionProvider {
   /// asynchronously via [_handlePurchaseUpdate] and is reflected in
   /// [purchaseFlowState] and [adsRemoved] — paywall_screen.dart should listen
   /// to those rather than awaiting this call for the final result.
-  Future<void> purchase(ProductDetails product) async {
+  Future<void> purchase(AmazonProductDetails product) async {
     purchaseFlowState.value = PurchaseFlowState.inProgress;
     lastError.value = null;
     try {
@@ -112,7 +111,7 @@ class SubscriptionProvider {
       lastError.value = AppPluginFailureCopy.billingUnavailableMessage;
     }
     // On success, any restored purchases arrive via _handlePurchaseUpdate
-    // with status == PurchaseStatus.restored — if the store genuinely has
+    // with status == AmazonPurchaseStatus.restored — if the store genuinely has
     // nothing to restore, purchaseFlowState simply never advances past
     // inProgress here, so paywall_screen.dart should pair this with a
     // reasonable timeout/idle-state check rather than waiting forever.
