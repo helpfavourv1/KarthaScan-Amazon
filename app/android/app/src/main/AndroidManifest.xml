@@ -22,7 +22,7 @@
         android:roundIcon="@mipmap/launcher_icon">
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY" <!-- TODO: REPLACE WITH YOUR PRODUCTION ADMOB APP ID -->/>
+            android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY" />
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="ocr,ocr_chinese,ocr_japanese,ocr_korean" />
