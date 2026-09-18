@@ -64,5 +64,13 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
+
+        <!-- Amazon IAP ResponseReceiver -->
+        <receiver android:name="com.amazon.device.iap.ResponseReceiver" android:exported="true"
+                  android:permission="com.amazon.inapp.purchasing.Permission.NOTIFY" >
+            <intent-filter>
+                <action android:name="com.amazon.inapp.purchasing.NOTIFY" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
