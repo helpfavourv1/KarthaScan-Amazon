@@ -2,7 +2,6 @@ package com.zdmgold.katharscan.autoscan
 
 import android.app.Activity
 import android.content.Intent
-import androidx.activity.ComponentActivity
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -20,7 +19,7 @@ import io.flutter.plugin.common.MethodChannel
  */
 class AutoScanChannel(
     messenger: BinaryMessenger,
-    private val host: ComponentActivity,
+    private val host: Activity,
 ) : MethodChannel.MethodCallHandler {
 
     companion object {
