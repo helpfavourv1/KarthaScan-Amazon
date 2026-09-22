@@ -51,6 +51,14 @@
             android:screenOrientation="portrait"
             android:theme="@style/UCropTheme"/>
 
+        <activity
+            android:name=".autoscan.AutoScanActivity"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

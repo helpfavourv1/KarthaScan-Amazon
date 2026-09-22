@@ -8,6 +8,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import com.zdmgold.katharscan.autoscan.AutoScanChannel
 import com.amazon.device.iap.PurchasingService
 
 class MainActivity: FlutterActivity() {
@@ -91,6 +92,8 @@ class MainActivity: FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        AutoScanChannel(flutterEngine.dartExecutor.binaryMessenger, this).register()
     }
 
     private fun saveFileToDownloads(bytes: ByteArray, fileName: String, mimeType: String): String {
