@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import com.zdmgold.katharscan.R
+import org.opencv.android.OpenCVLoader
 import java.io.File
 import java.io.FileOutputStream
 
@@ -31,6 +32,12 @@ class AutoScanActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (!OpenCVLoader.initLocal()) {
+            finishWithCancel()
+            return
+        }
+
         setContentView(R.layout.activity_auto_scan)
 
         previewView = findViewById(R.id.previewView)
