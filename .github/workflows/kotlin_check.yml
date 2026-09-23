@@ -23,6 +23,6 @@ jobs:
         working-directory: app
         run: flutter pub get
 
-      - name: Compile Kotlin only
-        working-directory: app/android
-        run: ./gradlew :app:compileReleaseKotlin --no-daemon --stacktrace
+      - name: Compile Kotlin (debug APK, no obfuscation)
+        working-directory: app
+        run: flutter build apk --debug --target-platform android-arm64
