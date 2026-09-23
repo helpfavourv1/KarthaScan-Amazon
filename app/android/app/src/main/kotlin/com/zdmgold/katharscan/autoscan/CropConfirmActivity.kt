@@ -9,6 +9,11 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageView
 import androidx.activity.ComponentActivity
+import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.zdmgold.katharscan.R
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.MatOfPoint2f
@@ -40,6 +45,18 @@ class CropConfirmActivity : ComponentActivity() {
         }
 
         setContentView(R.layout.activity_crop_confirm)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controls = findViewById<ViewGroup>(R.id.cropControls)
+        ViewCompat.setOnApplyWindowInsetsListener(controls) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout())
+            view.updatePadding(
+                left = bars.left, right = bars.right, bottom = bars.bottom + 24)
+            insets
+        }
+
         imageView = findViewById(R.id.cropImageView)
         overlay = findViewById(R.id.cropOverlay)
         confirmButton = findViewById(R.id.confirmButton)
@@ -120,7 +137,7 @@ class CropConfirmActivity : ComponentActivity() {
 
         try {
             val corrected = PerspectiveCorrector().correct(
-                raw, matCorners, PerspectiveCorrector.Filter.ENHANCE
+                raw, matCorners, PerspectiveCorrector.Filter.NONE
             )
             val outDir = File(cacheDir, "autoscan_crop")
             if (!outDir.exists()) outDir.mkdirs()

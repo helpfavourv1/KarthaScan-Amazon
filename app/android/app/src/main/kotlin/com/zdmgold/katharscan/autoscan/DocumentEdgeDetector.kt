@@ -1,6 +1,5 @@
 package com.zdmgold.katharscan.autoscan
 
-import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
@@ -11,22 +10,18 @@ import org.opencv.imgproc.Imgproc
 class DocumentEdgeDetector {
 
     companion object {
-        private const val TARGET_WIDTH = 640.0
+        private const val TARGET_WIDTH = 800.0
         private const val GAUSSIAN_KERNEL = 5
-        private const val DILATE_KERNEL = 3
-        private const val APPROX_EPSILON_RATIO = 0.02
-        private const val MIN_AREA_RATIO = 0.05
-        private const val CLAHE_CLIP = 3.0
-        private const val CLAHE_TILE = 8.0
+        private const val DILATE_KERNEL = 5
+        private const val APPROX_EPSILON_RATIO = 0.04
+        private const val MIN_AREA_RATIO = 0.03
+        private const val CANNY_LOW = 40.0
+        private const val CANNY_HIGH = 130.0
     }
 
-    private val clahe = Imgproc.createCLAHE(CLAHE_CLIP, Size(CLAHE_TILE, CLAHE_TILE))
     private val gray = Mat()
     private val small = Mat()
-    private val enhanced = Mat()
     private val blurred = Mat()
-    private val edgesLow = Mat()
-    private val edgesHigh = Mat()
     private val edges = Mat()
     private val hierarchy = Mat()
 
@@ -49,30 +44,20 @@ class DocumentEdgeDetector {
             gray.copyTo(small)
         }
 
-        clahe.apply(small, enhanced)
+        Imgproc.GaussianBlur(small, blurred,
+            Size(GAUSSIAN_KERNEL.toDouble(), GAUSSIAN_KERNEL.toDouble()), 0.0)
 
-        Imgproc.GaussianBlur(
-            enhanced, blurred,
-            Size(GAUSSIAN_KERNEL.toDouble(), GAUSSIAN_KERNEL.toDouble()),
-            0.0
-        )
-
-        Imgproc.Canny(blurred, edgesLow, 40.0, 120.0)
-        Imgproc.Canny(blurred, edgesHigh, 60.0, 180.0)
-        Core.bitwise_or(edgesLow, edgesHigh, edges)
+        Imgproc.Canny(blurred, edges, CANNY_LOW, CANNY_HIGH)
 
         val dilateKernel = Imgproc.getStructuringElement(
             Imgproc.MORPH_RECT,
-            Size(DILATE_KERNEL.toDouble(), DILATE_KERNEL.toDouble())
-        )
+            Size(DILATE_KERNEL.toDouble(), DILATE_KERNEL.toDouble()))
         Imgproc.dilate(edges, edges, dilateKernel)
         dilateKernel.release()
 
         val contours = mutableListOf<MatOfPoint>()
-        Imgproc.findContours(
-            edges, contours, hierarchy,
-            Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE
-        )
+        Imgproc.findContours(edges, contours, hierarchy,
+            Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
 
         val frameArea = smallWidth.toDouble() * smallHeight.toDouble()
         val minArea = frameArea * MIN_AREA_RATIO
@@ -82,10 +67,7 @@ class DocumentEdgeDetector {
 
         for (contour in contours) {
             val area = Imgproc.contourArea(contour)
-            if (area < minArea) {
-                contour.release()
-                continue
-            }
+            if (area < minArea) { contour.release(); continue }
 
             val contour2f = MatOfPoint2f(*contour.toArray())
             val approx = MatOfPoint2f()
@@ -103,7 +85,6 @@ class DocumentEdgeDetector {
             } else {
                 approx.release()
             }
-
             convexMat.release()
             contour2f.release()
             contour.release()
@@ -118,18 +99,11 @@ class DocumentEdgeDetector {
             bestQuad.release()
             bestQuad = MatOfPoint2f(*scaledPoints)
         }
-
         return bestQuad
     }
 
     fun release() {
-        gray.release()
-        small.release()
-        enhanced.release()
-        blurred.release()
-        edgesLow.release()
-        edgesHigh.release()
-        edges.release()
-        hierarchy.release()
+        gray.release(); small.release(); blurred.release()
+        edges.release(); hierarchy.release()
     }
 }

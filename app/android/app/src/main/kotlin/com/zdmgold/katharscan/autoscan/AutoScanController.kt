@@ -37,7 +37,6 @@ class AutoScanController(
     private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val analysisDetector = DocumentEdgeDetector()
     private val captureDetector = DocumentEdgeDetector()
-    private val corrector = PerspectiveCorrector()
     private val stabilizer = QuadStabilizer()
     private val isCapturing = AtomicBoolean(false)
 
