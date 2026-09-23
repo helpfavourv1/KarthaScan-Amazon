@@ -10,6 +10,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
@@ -23,6 +34,6 @@ jobs:
         working-directory: app
         run: flutter pub get
 
-      - name: Compile Kotlin (debug APK, no obfuscation)
+      - name: Compile Kotlin (debug APK, arm64 only)
         working-directory: app
         run: flutter build apk --debug --target-platform android-arm64
