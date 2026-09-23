@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +23,26 @@ class CornerOverlayView @JvmOverloads constructor(
         strokeWidth = 6f
     }
 
+    private val guidePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#80FFFFFF")
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+        pathEffect = android.graphics.DashPathEffect(floatArrayOf(20f, 16f), 0f)
+    }
+
+    private val guideTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#CCFFFFFF")
+        textSize = 42f
+        textAlign = Paint.Align.CENTER
+    }
+
+    private val statusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = 48f
+        textAlign = Paint.Align.CENTER
+        setShadowLayer(8f, 0f, 0f, Color.BLACK)
+    }
+
     private val handleFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
@@ -34,8 +55,11 @@ class CornerOverlayView @JvmOverloads constructor(
     }
 
     private val path = Path()
+    private val guideRect = RectF()
     private val corners = mutableListOf<PointF>()
     private var draggedIndex = -1
+    private var guideMode = false
+    private var statusText: String? = null
 
     var onCornersChanged: (() -> Unit)? = null
 
@@ -43,10 +67,23 @@ class CornerOverlayView @JvmOverloads constructor(
         if (newCorners.size != 4) return
         corners.clear()
         corners.addAll(newCorners)
+        guideMode = false
         invalidate()
     }
 
     fun getCorners(): List<PointF> = corners.toList()
+
+    fun setGuideMode(enabled: Boolean) {
+        if (guideMode == enabled) return
+        guideMode = enabled
+        invalidate()
+    }
+
+    fun setStatusText(text: String?) {
+        if (statusText == text) return
+        statusText = text
+        invalidate()
+    }
 
     fun clear() {
         corners.clear()
@@ -55,20 +92,39 @@ class CornerOverlayView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (corners.size != 4) return
 
-        path.reset()
-        path.moveTo(corners[0].x, corners[0].y)
-        for (i in 1 until corners.size) {
-            path.lineTo(corners[i].x, corners[i].y)
-        }
-        path.close()
-        canvas.drawPath(path, strokePaint)
+        if (guideMode && corners.isEmpty()) {
+            drawGuide(canvas)
+        } else if (corners.size == 4) {
+            path.reset()
+            path.moveTo(corners[0].x, corners[0].y)
+            for (i in 1 until corners.size) {
+                path.lineTo(corners[i].x, corners[i].y)
+            }
+            path.close()
+            canvas.drawPath(path, strokePaint)
 
-        for (corner in corners) {
-            canvas.drawCircle(corner.x, corner.y, 20f, handleFillPaint)
-            canvas.drawCircle(corner.x, corner.y, 20f, handleStrokePaint)
+            for (corner in corners) {
+                canvas.drawCircle(corner.x, corner.y, 20f, handleFillPaint)
+                canvas.drawCircle(corner.x, corner.y, 20f, handleStrokePaint)
+            }
         }
+
+        statusText?.let {
+            canvas.drawText(it, width / 2f, 120f, statusPaint)
+        }
+    }
+
+    private fun drawGuide(canvas: Canvas) {
+        val margin = width * 0.08f
+        guideRect.set(margin, margin, width - margin, height - margin)
+        canvas.drawRoundRect(guideRect, 24f, 24f, guidePaint)
+        canvas.drawText(
+            "Point at a document",
+            width / 2f,
+            height / 2f,
+            guideTextPaint
+        )
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

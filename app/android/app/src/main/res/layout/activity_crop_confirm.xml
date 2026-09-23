@@ -4,18 +4,19 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
+    <ImageView
+        android:id="@+id/cropImageView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter" />
 
     <com.zdmgold.katharscan.autoscan.CornerOverlayView
-        android:id="@+id/cornerOverlay"
+        android:id="@+id/cropOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
     <LinearLayout
-        android:id="@+id/controlsContainer"
+        android:id="@+id/cropControls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -24,17 +25,17 @@
         android:gravity="center">
 
         <Button
-            android:id="@+id/cancelButton"
+            android:id="@+id/retakeButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@android:string/cancel"
+            android:text="Retake"
             android:layout_marginEnd="24dp" />
 
         <Button
-            android:id="@+id/captureButton"
+            android:id="@+id/confirmButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Capture" />
+            android:text="Confirm" />
     </LinearLayout>
 
 </FrameLayout>

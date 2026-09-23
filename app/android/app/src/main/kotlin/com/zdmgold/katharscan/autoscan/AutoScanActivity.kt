@@ -6,11 +6,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.view.ViewGroup
 import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.zdmgold.katharscan.R
 import org.opencv.android.OpenCVLoader
 import java.io.File
@@ -30,6 +35,21 @@ class AutoScanActivity : ComponentActivity() {
         if (granted) startScanner() else finishWithCancel()
     }
 
+    private val cropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val path = result.data?.getStringExtra(CropConfirmActivity.EXTRA_RESULT_PATH)
+                if (path != null) finishWithResult(path) else finishWithCancel()
+            }
+            CropConfirmActivity.RESULT_RETAKE -> {
+                captureButton.isEnabled = true
+            }
+            else -> finishWithCancel()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -39,6 +59,21 @@ class AutoScanActivity : ComponentActivity() {
         }
 
         setContentView(R.layout.activity_auto_scan)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controls = findViewById<ViewGroup>(R.id.controlsContainer)
+        ViewCompat.setOnApplyWindowInsetsListener(controls) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout()
+            )
+            view.updatePadding(
+                left = bars.left,
+                right = bars.right,
+                bottom = bars.bottom + 24
+            )
+            insets
+        }
 
         previewView = findViewById(R.id.previewView)
         overlay = findViewById(R.id.cornerOverlay)
@@ -64,19 +99,29 @@ class AutoScanActivity : ComponentActivity() {
             overlay = overlay,
             onError = { /* swallow; scan continues */ }
         )
+        c.onAutoCapture = { result -> handleCaptured(result) }
         controller = c
         c.start()
     }
 
     private fun captureNow() {
         val c = controller ?: return
+        if (!captureButton.isEnabled) return
         captureButton.isEnabled = false
-        c.captureAndProcess { bitmap ->
-            captureButton.isEnabled = true
-            if (bitmap == null) { finishWithCancel(); return@captureAndProcess }
-            val path = saveBitmapToCache(bitmap)
-            if (path == null) finishWithCancel() else finishWithResult(path)
+        c.captureAndProcess { result -> handleCaptured(result) }
+    }
+
+    private fun handleCaptured(result: CaptureResult?) {
+        captureButton.isEnabled = true
+        if (result == null) { finishWithCancel(); return }
+        val path = saveBitmapToCache(result.bitmap)
+        if (path == null) { finishWithCancel(); return }
+
+        val intent = Intent(this, CropConfirmActivity::class.java).apply {
+            putExtra(CropConfirmActivity.EXTRA_IMAGE_PATH, path)
+            result.corners?.let { putExtra(CropConfirmActivity.EXTRA_CORNERS, it) }
         }
+        cropLauncher.launch(intent)
     }
 
     private fun saveBitmapToCache(bitmap: Bitmap): String? {
