@@ -75,16 +75,18 @@ class IapService {
   }
 
   Future<List<AmazonProductDetails>> queryProducts() async {
-    try {
-      // For the Amazon fork, we return an empty list to trigger the UI's 
-      // designed fallback to the static "\$14.99" copy, as querying 
-      // Amazon's product data asynchronously requires a more complex 
-      // Completer pattern. The static fallback is the intended behavior.
-      return const <AmazonProductDetails>[];
-    } catch (error) {
-      debugPrint('[IapService] queryProducts failed: \$error');
-      return const <AmazonProductDetails>[];
-    }
+    // Return a static entry so the paywall screen can find the product.
+    // The actual product data (title, price) is not used for the purchase
+    // flow — PurchasingService.purchase(sku) only needs the SKU.
+    // Price display is handled by the paywall screen's static fallback.
+    return const <AmazonProductDetails>[
+      AmazonProductDetails(
+        id: removeAdsProductId,
+        title: 'Remove Ads',
+        description: 'Remove all ads forever with a single, one-time purchase.',
+        price: '',
+      ),
+    ];
   }
 
   Future<void> purchase(AmazonProductDetails product) async {

@@ -63,7 +63,7 @@ class MainActivity: FlutterActivity() {
         iapHandler = AmazonIapHandler()
         val iapChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, IAP_CHANNEL)
         iapHandler.setMethodChannel(iapChannel)
-        PurchasingService.registerListener(this, iapHandler)
+        PurchasingService.registerListener(applicationContext, iapHandler)
 
         iapChannel.setMethodCallHandler { call, result ->
             when (call.method) {
