@@ -50,7 +50,7 @@ class AmazonIapHandler : PurchasingListener {
             PurchaseResponse.RequestStatus.SUCCESSFUL -> {
                 val receipt = response.receipt
                 if (receipt != null) {
-                    PurchasingService.notifyFulfillment(receipt.receiptId, com.amazon.device.iap.model.FulfillmentResult.UNAVAILABLE)
+                    PurchasingService.notifyFulfillment(receipt.receiptId, com.amazon.device.iap.model.FulfillmentResult.FULFILLED)
                     val purchaseMap = mapOf(
                         "productId" to receipt.sku,
                         "purchaseToken" to receipt.receiptId,
@@ -78,7 +78,7 @@ class AmazonIapHandler : PurchasingListener {
         Log.d(TAG, "onPurchaseUpdatesResponse: " + response.requestStatus)
         if (response.requestStatus == PurchaseUpdatesResponse.RequestStatus.SUCCESSFUL) {
             for (receipt in response.receipts) {
-                PurchasingService.notifyFulfillment(receipt.receiptId, com.amazon.device.iap.model.FulfillmentResult.UNAVAILABLE)
+                PurchasingService.notifyFulfillment(receipt.receiptId, com.amazon.device.iap.model.FulfillmentResult.FULFILLED)
                 val purchaseMap = mapOf(
                     "productId" to receipt.sku,
                     "purchaseToken" to receipt.receiptId,

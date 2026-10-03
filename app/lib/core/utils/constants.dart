@@ -208,6 +208,9 @@ abstract final class AppSupportContact {
   AppSupportContact._();
 }
 
+/// Set to true only after Amazon IAP has been verified on a real Fire tablet.
+const bool kIapAvailable = false;
+
 abstract final class AppPluginFailureCopy {
   static String get ocrUnavailableTooltip => AppLocale.l10n.ocrUnavailableTooltip;
   static String get docScannerUnsupportedMessage => AppLocale.l10n.docScannerUnsupportedMessage;

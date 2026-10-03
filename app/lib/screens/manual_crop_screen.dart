@@ -395,8 +395,17 @@ class _ManualCropScreenState extends State<ManualCropScreen> {
       );
 
       final success = await _scanProvider.importDocument(document);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not save the document. Please try again.')));
+      }
       return success ? document : null;
     } catch (e) {
+      DebugLogService().log('SAVE_SCAN', 'save failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not save the document: $e')));
+      }
       return null;
     } finally {
       if (mounted) setState(() => _stage = _Stage.pickImage);

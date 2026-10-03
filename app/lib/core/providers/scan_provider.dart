@@ -332,11 +332,18 @@ class ScanProvider {
           : <ScanDocument>[document, ...documents.value];
       
       // Schedule export reminder in 48 hours
-      await NotificationService.instance.scheduleExportReminder(
-        documentId: document.id,
-        documentTitle: document.title,
-        scheduledTime: DateTime.now().add(const Duration(hours: 48)),
-      );
+      // Fire-and-forget: notification permission/scheduling can throw or never
+      // complete on Fire OS, which must never block or fail a saved document.
+      try {
+        unawaited(NotificationService.instance
+            .scheduleExportReminder(
+              documentId: document.id,
+              documentTitle: document.title,
+              scheduledTime: DateTime.now().add(const Duration(hours: 48)),
+            )
+            .timeout(const Duration(seconds: 5))
+            .catchError((Object _) {}));
+      } catch (_) {}
     } else {
       lastError.value = 'Could not import "${document.title}".';
     }

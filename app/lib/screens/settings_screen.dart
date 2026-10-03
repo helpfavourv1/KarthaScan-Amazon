@@ -239,9 +239,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               listenable: _subscriptionProvider.adsRemoved,
               builder: (context, _) => Column(
                 children: [
-                  _settingsTile(title: _subscriptionProvider.adsRemoved.value ? AppLocalizations.of(context).adsRemovedLabel : AppLocalizations.of(context).removeAdsTitle, trailing: Icon(Icons.chevron_right, color: textSecondary), onTap: () => context.push('/paywall'), textPrimary: textPrimary, border: border),
+                  _settingsTile(title: !kIapAvailable ? 'Remove Ads — not available right now' : (_subscriptionProvider.adsRemoved.value ? AppLocalizations.of(context).adsRemovedLabel : AppLocalizations.of(context).removeAdsTitle), trailing: Icon(Icons.chevron_right, color: textSecondary), onTap: () { if (kIapAvailable) { context.push('/paywall'); } else { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Remove Ads is not available right now.'))); } }, textPrimary: textPrimary, border: border),
                   const SizedBox(height: AppSpacing.xs),
-                  _settingsTile(title: l10n.restorePurchasesButton, trailing: const SizedBox.shrink(), onTap: () => _restorePurchases(l10n), textPrimary: textPrimary, border: border),
+                  if (kIapAvailable) _settingsTile(title: l10n.restorePurchasesButton, trailing: const SizedBox.shrink(), onTap: () => _restorePurchases(l10n), textPrimary: textPrimary, border: border),
                 ],
               ),
             ),
